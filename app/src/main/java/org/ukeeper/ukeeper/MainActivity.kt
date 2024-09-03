@@ -1,9 +1,12 @@
 package org.ukeeper.ukeeper
 
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -13,8 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
@@ -22,15 +23,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
@@ -57,6 +61,8 @@ import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.Fill
 import com.patrykandpatrick.vico.core.common.shader.DynamicShader
+import org.ukeeper.ukeeper.ui.DeviceList
+import org.ukeeper.ukeeper.ui.SetDevice
 import org.ukeeper.ukeeper.ui.theme.UkeeperTheme
 
 
@@ -65,25 +71,44 @@ class MainActivity : ComponentActivity() {
         data object Home : Screen("home", "/home")
         data object Profile : Screen("profile", "/profile")
         data object Analyze : Screen("analyze", "/analyze")
+        data object ListDevices : Screen("device/scan", "/device/scan")
+        data object SetDevice : Screen("device/set", "/device/set")
     }
 
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ConnectionHandler(this, applicationContext).scanDevices()
         enableEdgeToEdge()
         setContent {
             UkeeperTheme {
                 val navController = rememberNavController()
+                var title by remember { mutableStateOf("U-Keeper") }
+
+                LaunchedEffect(navController.currentBackStackEntryFlow) {
+                    navController.currentBackStackEntryFlow.collect {
+                        title = it.destination.route ?: ""
+                    }
+                }
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
-                        Column(
-                            Modifier.padding(
-                                horizontal = 20.dp,
-                                vertical = 40.dp
-                            )
-                        ) {
-                            Text("U-Keeper", fontSize = TextUnit(8F, TextUnitType.Em))
-                        }
+                        TopAppBar(
+                            title = {
+                                Column(
+                                    Modifier.padding(
+                                        vertical = 40.dp
+                                    )
+                                ) {
+                                    Log.v("NAV", title);
+                                    Text(pathToTitle(title), fontSize = TextUnit(8F, TextUnitType.Em))
+                                }
+                            }
+                        )
+
+
                     },
                     bottomBar = {
                         BottomNavigation(
@@ -108,21 +133,34 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
-
                 ) { innerPadding ->
-                    NavHost(navController, startDestination = Screen.Profile.route,
+                    NavHost(navController, startDestination = Screen.SetDevice.route,
                         Modifier
                             .padding(innerPadding)
                             .padding(horizontal = 20.dp)
                             .height(IntrinsicSize.Max)
+                            .background(Color(0xFF121212))
                     ) {
                         composable(Screen.Profile.route) { Profile(navController) }
                         composable(Screen.Home.route) { Home(navController) }
                         composable(Screen.Analyze.route) { Analyze(navController) }
+                        composable(Screen.ListDevices.route) { DeviceList(navController) }
+                        composable(Screen.SetDevice.route) { SetDevice(navController) }
                     }
                 }
             }
         }
+    }
+}
+
+fun pathToTitle(path:String): String {
+    return when (path) {
+        "home" -> "U-Keeper"
+        "profile" -> "사용자 정보"
+        "analyze" -> "분석"
+        "device/scan" -> "기기 찾기"
+        "device/set" -> "기기 설정"
+        else -> path
     }
 }
 
@@ -144,7 +182,7 @@ fun Home(navController: NavHostController) {
     LaunchedEffect(Unit) { modelProducer.runTransaction { lineSeries { series(4, 12, 8, 16) } } }
 
 
-    Column { 
+    Column {
         stat(hour = 7.1f, name = "활동", description = "지난 주 보다 20% ↑", modelProducer = modelProducer, dynamicShader = DynamicShader.verticalGradient(arrayOf(Color(0xff66FF7E), Color(0x0066FF7E))), background = Color(0xff00BB1E))
         Spacer(modifier = Modifier.height(20.dp))
         stat(hour = 6.9f, name = "휴식", description = "지난 주 보다 20% ↑", modelProducer = modelProducer, dynamicShader = DynamicShader.verticalGradient(arrayOf(Color(0xffFF8383), Color(0x00FF8383))), background = Color(0xffD5374A))
@@ -213,8 +251,8 @@ fun Analyze(navController: NavHostController) {
         Modifier
             .height(IntrinsicSize.Max)
     ){
-        textRow("활동")
-        textRow("휴식")
+        TextRow("활동")
+        TextRow("휴식")
         val configuration = LocalConfiguration.current
         CartesianChartHost(
             rememberCartesianChart(
@@ -229,7 +267,7 @@ fun Analyze(navController: NavHostController) {
 }
 
 @Composable
-fun textRow(name:String) {
+fun TextRow(name:String) {
     Row (
         verticalAlignment = Alignment.Bottom,
         modifier = Modifier

@@ -64,6 +64,8 @@ dependencies {
     implementation(libs.vico.compose.m3)
     implementation(libs.vico.core)
     implementation(libs.vico.views)
+    implementation("no.nordicsemi.android:ble-ktx:2.9.0-beta01")
+    implementation("org.tensorflow:tensorflow-lite:+")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

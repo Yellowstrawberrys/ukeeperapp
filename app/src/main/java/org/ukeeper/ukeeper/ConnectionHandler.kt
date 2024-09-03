@@ -3,6 +3,7 @@ package org.ukeeper.ukeeper
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
@@ -28,6 +29,7 @@ class ConnectionHandler(activity: MainActivity, context:Context) : BleManager(co
         (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter;
     private val bleScanner:BluetoothLeScanner? = bleAdapter?.bluetoothLeScanner;
     private val handler: Handler = Handler(Looper.getMainLooper());
+    private val scanned: Set<BluetoothDevice> = HashSet();
 
     @RequiresApi(Build.VERSION_CODES.S)
     public fun requestPermission():Boolean {
@@ -67,6 +69,9 @@ class ConnectionHandler(activity: MainActivity, context:Context) : BleManager(co
                     Log.v("BLE", "CALLBACK")
                     Log.v("BLE", callbackType.toString())
                     Log.v("BLE", result?.device?.name.toString())
+                    if(result != null && result.device != null && result.device.name != null && result.device.name.startsWith("UKeeper")) {
+                        scanned.plus(result.device!!)
+                    }
                     super.onScanResult(callbackType, result)
                 }
 
@@ -74,15 +79,6 @@ class ConnectionHandler(activity: MainActivity, context:Context) : BleManager(co
                     Log.v("BLE", "ERR")
                     Log.v("BLE", errorCode.toString())
                     super.onScanFailed(errorCode)
-                }
-
-                override fun onBatchScanResults(results: MutableList<ScanResult>?) {
-                    if (results != null) {
-                        for(l in results) {
-                            Log.v("BLE", l.device.name.toString());
-                        }
-                    }
-                    super.onBatchScanResults(results)
                 }
             }
             handler.postDelayed({

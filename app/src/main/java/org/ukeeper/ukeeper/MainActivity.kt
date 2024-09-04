@@ -1,5 +1,6 @@
 package org.ukeeper.ukeeper
 
+import android.content.res.AssetManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -61,6 +62,7 @@ import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.Fill
 import com.patrykandpatrick.vico.core.common.shader.DynamicShader
+import org.ukeeper.ukeeper.db.DataManager
 import org.ukeeper.ukeeper.ui.DeviceList
 import org.ukeeper.ukeeper.ui.SetDevice
 import org.ukeeper.ukeeper.ui.theme.UkeeperTheme
@@ -72,15 +74,21 @@ class MainActivity : ComponentActivity() {
         data object Profile : Screen("profile", "/profile")
         data object Analyze : Screen("analyze", "/analyze")
         data object ListDevices : Screen("device/scan", "/device/scan")
-        data object SetDevice : Screen("device/set", "/device/set")
+        data object SetDevice : Screen("device/set?id={id}", "/device/set")
     }
 
+    var dbm: DataManager? = null
+    var prd: Predictor? = null
 
     @OptIn(ExperimentalMaterial3Api::class)
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        ConnectionHandler(this, applicationContext).scanDevices()
+        dbm = DataManager(applicationContext)
+        prd = Predictor(applicationContext)
+
+        Log.i("FFFF", prd?.predict(dbm?.read("2024-09-04")?.toFloatArray()!!).toString())
+
         enableEdgeToEdge()
         setContent {
             UkeeperTheme {
@@ -134,7 +142,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    NavHost(navController, startDestination = Screen.SetDevice.route,
+                    NavHost(navController, startDestination = Screen.ListDevices.route,
                         Modifier
                             .padding(innerPadding)
                             .padding(horizontal = 20.dp)
@@ -144,8 +152,8 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.Profile.route) { Profile(navController) }
                         composable(Screen.Home.route) { Home(navController) }
                         composable(Screen.Analyze.route) { Analyze(navController) }
-                        composable(Screen.ListDevices.route) { DeviceList(navController) }
-                        composable(Screen.SetDevice.route) { SetDevice(navController) }
+                        composable(Screen.ListDevices.route) { DeviceList(this@MainActivity, applicationContext, navController) }
+                        composable(Screen.SetDevice.route) { SetDevice(dbm!!,this@MainActivity, applicationContext,navController) }
                     }
                 }
             }

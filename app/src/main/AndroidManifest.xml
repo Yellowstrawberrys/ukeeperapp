@@ -18,6 +18,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Ukeeper"
         tools:targetApi="31">
+        <service android:name=".KeeperService" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

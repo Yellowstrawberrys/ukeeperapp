@@ -1,9 +1,11 @@
 package org.ukeeper.ukeeper
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
@@ -20,41 +22,48 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import no.nordicsemi.android.ble.BleManager
+import org.ukeeper.ukeeper.db.DataManager
+import org.ukeeper.ukeeper.kai_morich.simple_bluetooth_le_terminal.SerialListener
+import org.ukeeper.ukeeper.kai_morich.simple_bluetooth_le_terminal.SerialSocket
+import java.lang.Exception
+import java.util.ArrayDeque
+import java.util.UUID
 
 
-class ConnectionHandler(activity: MainActivity, context:Context) : BleManager(context) {
+class ConnectionHandler(private val activity: MainActivity, private val context: Context) : BleManager(context) {
 
-    private val activity:Activity = activity;
-    private val bleAdapter:BluetoothAdapter? =
+    private val bleAdapter: BluetoothAdapter? =
         (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter;
-    private val bleScanner:BluetoothLeScanner? = bleAdapter?.bluetoothLeScanner;
+    private val bleScanner: BluetoothLeScanner? = bleAdapter?.bluetoothLeScanner;
     private val handler: Handler = Handler(Looper.getMainLooper());
-    private val scanned: Set<BluetoothDevice> = HashSet();
+    private val service: UUID = UUID.fromString("0000FFE0-0000-1000-8000-00805F9B34FB");
+    private val uuid: UUID = UUID.fromString("0000FFE1-0000-1000-8000-00805F9B34FB");
+
 
     @RequiresApi(Build.VERSION_CODES.S)
-    public fun requestPermission():Boolean {
+    public fun requestPermission(): Boolean {
         val permissions = arrayOf(
             android.Manifest.permission.BLUETOOTH_SCAN,
             android.Manifest.permission.BLUETOOTH_CONNECT,
             android.Manifest.permission.ACCESS_FINE_LOCATION,
             android.Manifest.permission.ACCESS_COARSE_LOCATION
         );
-        if(permissions.any {
+        if (permissions.any {
                 ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
             }) {
             ActivityCompat.requestPermissions(activity, permissions, 1)
 
             return permissions.any {
-                    ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-                }
+                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+            }
         }
         return true;
     }
 
     @SuppressLint("MissingPermission")
     @RequiresApi(Build.VERSION_CODES.S)
-    public fun scanDevices() {
-        if(requestPermission()) {
+    public fun scanDevices(scanned: MutableList<BluetoothDevice>) {
+        if (requestPermission()) {
 
             val filter = ScanFilter.Builder().build()
             val filters = listOf(filter)
@@ -66,11 +75,11 @@ class ConnectionHandler(activity: MainActivity, context:Context) : BleManager(co
 
             val leScanCallback = object : ScanCallback() {
                 override fun onScanResult(callbackType: Int, result: ScanResult?) {
-                    Log.v("BLE", "CALLBACK")
-                    Log.v("BLE", callbackType.toString())
-                    Log.v("BLE", result?.device?.name.toString())
-                    if(result != null && result.device != null && result.device.name != null && result.device.name.startsWith("UKeeper")) {
-                        scanned.plus(result.device!!)
+                    if (result != null && result.device != null && result.device.name != null && result.device.name.startsWith(
+                            "U-Keeper"
+                        )
+                    ) {
+                        if (!scanned.contains(result.device!!)) scanned.add(result.device!!)
                     }
                     super.onScanResult(callbackType, result)
                 }
@@ -84,9 +93,69 @@ class ConnectionHandler(activity: MainActivity, context:Context) : BleManager(co
             handler.postDelayed({
                 Log.v("BLE", "SCAN STOPPED")
                 bleScanner?.stopScan(leScanCallback)
-            }, 5000)
+            }, 2000)
             bleScanner?.startScan(filters, settings, leScanCallback)
             Log.v("BLE", "SCAN STARTED")
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    @RequiresApi(Build.VERSION_CODES.S)
+    public fun findDevice(id: String, callback: ScanCallback) {
+        if (requestPermission()) {
+            val filter = ScanFilter.Builder().setDeviceAddress(id).build()
+            val filters = listOf(filter)
+
+            val settings = ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+                .setReportDelay(0)
+                .build()
+
+            handler.postDelayed({
+                Log.v("BLE", "SCAN STOPPED")
+                bleScanner?.stopScan(callback)
+            }, 2000)
+            bleScanner?.startScan(filters, settings, callback);
+            Log.v("BLE", "SCAN STARTED")
+        }
+    }
+
+
+    @SuppressLint("MissingPermission")
+    public fun read(dbm: DataManager, bd: BluetoothDevice) {
+        SerialSocket(context, bd)
+            .connect(object : SerialListener {
+                override fun onSerialConnect() {
+//                    TODO("Not yet implemented")
+                }
+
+                override fun onSerialConnectError(e: Exception?) {
+//                    TODO("Not yet implemented")
+                }
+
+                override fun onSerialRead(data: ByteArray?) {
+                    val a = data?.decodeToString()!!.split(" ")
+                    val date = a[0]
+                    val timeD = a[1].split(":")
+                    val time = timeD[0].toFloat()*60 + timeD[1].toFloat()
+                    dbm.write(date, time)
+
+
+                    dbm!!.read("2024-09-04")?.forEach { ele ->
+                        run {
+                            Log.i("FF", ele.toString())
+                        }
+                    }
+                }
+
+                override fun onSerialRead(datas: ArrayDeque<ByteArray>?) {
+//                    TODO("Not yet implemented")
+                }
+
+                override fun onSerialIoError(e: Exception?) {
+//                    TODO("Not yet implemented")
+                }
+
+            })
     }
 }

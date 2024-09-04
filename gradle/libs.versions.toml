@@ -11,8 +11,8 @@ composeBom = "2024.04.01"
 material = "1.6.8"
 navVersion = "2.7.7"
 vico = "2.0.0-alpha.28"
-tensorflowLiteSupport = "0.1.0"
-tensorflowLiteMetadata = "0.1.0"
+tensorflowLiteSupport = "0.4.4"
+tensorflowLiteMetadata = "0.4.4"
 tensorflowLiteGpu = "2.3.0"
 
 [libraries]

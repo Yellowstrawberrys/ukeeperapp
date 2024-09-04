@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -74,12 +75,12 @@ import org.ukeeper.ukeeper.ui.theme.UkeeperTheme
 
 class MainActivity : ComponentActivity() {
     sealed class Screen(val route: String, val destination: String) {
-        data object Home : Screen("home", "/home")
-        data object Profile : Screen("profile", "/profile")
-        data object Analyze : Screen("analyze", "/analyze")
-        data object ListDevices : Screen("device/scan", "/device/scan")
-        data object SetDevice : Screen("device/set?id={id}", "/device/set")
-        data object Contacts : Screen("contacts", "/contacts")
+        data object Home : Screen("home", "home")
+        data object Profile : Screen("profile", "profile")
+        data object Analyze : Screen("analyze", "analyze")
+        data object ListDevices : Screen("device/scan", "device/scan")
+        data object SetDevice : Screen("device/set?id={id}", "device/set")
+        data object Contacts : Screen("contacts", "contacts")
     }
 
     var dbm: DataManager? = null
@@ -92,7 +93,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         dbm = DataManager(applicationContext)
 //        prd = Predictor(applicationContext)
-        scm = SocialManager(applicationContext)
+        scm = SocialManager(this, applicationContext)
 
         Intent(this, KeeperService::class.java).run {
             startService(this)
@@ -150,7 +151,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    NavHost(navController, startDestination = Screen.Contacts.route,
+                    NavHost(navController, startDestination = Screen.Home.route,
                         Modifier
                             .padding(innerPadding)
                             .padding(horizontal = 20.dp)
@@ -162,7 +163,7 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.Analyze.route) { Analyze(navController) }
                         composable(Screen.ListDevices.route) { DeviceList(this@MainActivity, applicationContext, navController) }
                         composable(Screen.SetDevice.route) { SetDevice(scm!!, dbm!!,this@MainActivity, applicationContext,navController) }
-                        composable(Screen.Contacts.route) { Contacts(dbm!!, navController) }
+                        composable(Screen.Contacts.route) { Contacts(scm!!, dbm!!, navController) }
                     }
                 }
             }
@@ -196,8 +197,29 @@ fun Profile(navController: NavHostController) {
             Color.Black,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("정은수님", fontSize = TextUnit(10F, TextUnitType.Em), style = TextStyle(fontWeight = FontWeight.W900, color = Color.White))
+            Text("정지효님", fontSize = TextUnit(10F, TextUnitType.Em), style = TextStyle(fontWeight = FontWeight.W900, color = Color.White))
         }
+        Spacer(Modifier.padding(7.dp))
+        ColBox(
+            Color.Black,
+            modifier = Modifier.fillMaxWidth()
+                .clickable {
+                    navController.navigate("device/scan")
+                }
+        ) {
+            Text("기기 설정하기", fontSize = TextUnit(10F, TextUnitType.Em), style = TextStyle(fontWeight = FontWeight.W900, color = Color.White))
+        }
+        Spacer(Modifier.padding(7.dp))
+        ColBox(
+            Color.Black,
+            modifier = Modifier.fillMaxWidth()
+                .clickable {
+                    navController.navigate("contacts")
+                }
+        ) {
+            Text("연락처 설정하기", fontSize = TextUnit(10F, TextUnitType.Em), style = TextStyle(fontWeight = FontWeight.W900, color = Color.White))
+        }
+        Spacer(Modifier.padding(7.dp))
     }
 }
 

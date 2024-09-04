@@ -37,11 +37,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavHostController
 import org.ukeeper.ukeeper.ColBox
+import org.ukeeper.ukeeper.SocialManager
 import org.ukeeper.ukeeper.db.DataManager
 
 @SuppressLint("UnrememberedMutableState")
 @Composable
-public fun Contacts(db: DataManager, navHostController: NavHostController) {
+public fun Contacts(scm: SocialManager, db: DataManager, navHostController: NavHostController) {
+    scm.requestPermission()
     var contacts = mutableStateOf(db.getContacts())
     val openAlertDialog = remember { mutableIntStateOf(0) }
     var clicked = remember { mutableStateOf("") };

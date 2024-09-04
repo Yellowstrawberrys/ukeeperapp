@@ -42,6 +42,7 @@ import org.ukeeper.ukeeper.ColBox
 import org.ukeeper.ukeeper.ConnectionHandler
 import org.ukeeper.ukeeper.MainActivity
 import org.ukeeper.ukeeper.R
+import org.ukeeper.ukeeper.SocialManager
 import org.ukeeper.ukeeper.animatedBorder
 import org.ukeeper.ukeeper.db.DataManager
 import java.net.URLEncoder
@@ -61,7 +62,11 @@ public fun DeviceList(activity: MainActivity, context: Context, navController: N
     ) {
         Text("탐색된 기기")
         Row {
-           Text("⟳ 새로고침", style = TextStyle(color = Color(0xFF8B8B8B)))
+           Text("⟳ 새로고침", style = TextStyle(color = Color(0xFF8B8B8B)), modifier = Modifier.clickable {
+               run {
+
+               }
+           })
         }
     }
     Column (
@@ -120,7 +125,7 @@ fun deviceToName(device: BluetoothDevice): String {
 
 @RequiresApi(Build.VERSION_CODES.S)
 @Composable
-fun SetDevice(dbm:DataManager, activity: MainActivity, context: Context, navController: NavHostController) {
+fun SetDevice(scm: SocialManager, dbm:DataManager, activity: MainActivity, context: Context, navController: NavHostController) {
     val con:ConnectionHandler = ConnectionHandler(activity, context)
     navController.currentBackStackEntry?.arguments?.keySet()?.forEachIndexed { index, s -> run {
         Log.v(
@@ -138,7 +143,7 @@ fun SetDevice(dbm:DataManager, activity: MainActivity, context: Context, navCont
             Log.v("BLE", callbackType.toString())
             Log.v("BLE", result?.device?.name.toString())
 
-            con.read(dbm, result?.device!!)
+            con.read(scm, dbm, result?.device!!, navController)
             super.onScanResult(callbackType, result)
         }
 

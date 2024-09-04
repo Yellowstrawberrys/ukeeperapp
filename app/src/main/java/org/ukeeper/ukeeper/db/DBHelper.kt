@@ -12,9 +12,15 @@ class DBHelper(context:Context)  : SQLiteOpenHelper(context, "ukeeper", null, 1)
                 `time` REAL NOT NULL
             )
         """.trimIndent())
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `contacts` (
+                `name` TEXT NOT NULL,
+                `phone` TEXT NOT NULL
+            )
+        """.trimIndent())
     }
 
     override fun onUpgrade(p0: SQLiteDatabase?, p1: Int, p2: Int) {
-        TODO("Not yet implemented")
+//        TODO("Not yet implemented")
     }
 }

@@ -1,5 +1,7 @@
 package org.ukeeper.ukeeper
 
+import KeeperService
+import android.content.Intent
 import android.content.res.AssetManager
 import android.os.Build
 import android.os.Bundle
@@ -63,6 +65,8 @@ import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.Fill
 import com.patrykandpatrick.vico.core.common.shader.DynamicShader
 import org.ukeeper.ukeeper.db.DataManager
+import org.ukeeper.ukeeper.ml.UKeeper
+import org.ukeeper.ukeeper.ui.Contacts
 import org.ukeeper.ukeeper.ui.DeviceList
 import org.ukeeper.ukeeper.ui.SetDevice
 import org.ukeeper.ukeeper.ui.theme.UkeeperTheme
@@ -75,19 +79,24 @@ class MainActivity : ComponentActivity() {
         data object Analyze : Screen("analyze", "/analyze")
         data object ListDevices : Screen("device/scan", "/device/scan")
         data object SetDevice : Screen("device/set?id={id}", "/device/set")
+        data object Contacts : Screen("contacts", "/contacts")
     }
 
     var dbm: DataManager? = null
     var prd: Predictor? = null
+    var scm: SocialManager? = null
 
     @OptIn(ExperimentalMaterial3Api::class)
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         dbm = DataManager(applicationContext)
-        prd = Predictor(applicationContext)
+//        prd = Predictor(applicationContext)
+        scm = SocialManager(applicationContext)
 
-        Log.i("FFFF", prd?.predict(dbm?.read("2024-09-04")?.toFloatArray()!!).toString())
+        Intent(this, KeeperService::class.java).run {
+            startService(this)
+        }
 
         enableEdgeToEdge()
         setContent {
@@ -97,7 +106,7 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(navController.currentBackStackEntryFlow) {
                     navController.currentBackStackEntryFlow.collect {
-                        title = it.destination.route ?: ""
+                        title = (it.destination.route ?: "").split("?")[0]
                     }
                 }
                 Scaffold(
@@ -110,8 +119,7 @@ class MainActivity : ComponentActivity() {
                                         vertical = 40.dp
                                     )
                                 ) {
-                                    Log.v("NAV", title);
-                                    Text(pathToTitle(title), fontSize = TextUnit(8F, TextUnitType.Em))
+                                    Text(pathToTitle(title), fontSize = TextUnit(8F, TextUnitType.Em), style = TextStyle(fontWeight = FontWeight.W500))
                                 }
                             }
                         )
@@ -142,7 +150,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    NavHost(navController, startDestination = Screen.ListDevices.route,
+                    NavHost(navController, startDestination = Screen.Contacts.route,
                         Modifier
                             .padding(innerPadding)
                             .padding(horizontal = 20.dp)
@@ -153,10 +161,18 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.Home.route) { Home(navController) }
                         composable(Screen.Analyze.route) { Analyze(navController) }
                         composable(Screen.ListDevices.route) { DeviceList(this@MainActivity, applicationContext, navController) }
-                        composable(Screen.SetDevice.route) { SetDevice(dbm!!,this@MainActivity, applicationContext,navController) }
+                        composable(Screen.SetDevice.route) { SetDevice(scm!!, dbm!!,this@MainActivity, applicationContext,navController) }
+                        composable(Screen.Contacts.route) { Contacts(dbm!!, navController) }
                     }
                 }
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Intent(this, KeeperService::class.java).run {
+            stopService(this)
         }
     }
 }
@@ -168,6 +184,7 @@ fun pathToTitle(path:String): String {
         "analyze" -> "분석"
         "device/scan" -> "기기 찾기"
         "device/set" -> "기기 설정"
+        "contacts" -> "연락처"
         else -> path
     }
 }

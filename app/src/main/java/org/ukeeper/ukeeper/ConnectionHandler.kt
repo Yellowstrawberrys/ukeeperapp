@@ -21,6 +21,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavHostController
 import no.nordicsemi.android.ble.BleManager
 import org.ukeeper.ukeeper.db.DataManager
 import org.ukeeper.ukeeper.kai_morich.simple_bluetooth_le_terminal.SerialListener
@@ -38,6 +39,8 @@ class ConnectionHandler(private val activity: MainActivity, private val context:
     private val handler: Handler = Handler(Looper.getMainLooper());
     private val service: UUID = UUID.fromString("0000FFE0-0000-1000-8000-00805F9B34FB");
     private val uuid: UUID = UUID.fromString("0000FFE1-0000-1000-8000-00805F9B34FB");
+
+    private var scanning: Boolean = false
 
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -63,7 +66,7 @@ class ConnectionHandler(private val activity: MainActivity, private val context:
     @SuppressLint("MissingPermission")
     @RequiresApi(Build.VERSION_CODES.S)
     public fun scanDevices(scanned: MutableList<BluetoothDevice>) {
-        if (requestPermission()) {
+        if (!scanning && requestPermission()) {
 
             val filter = ScanFilter.Builder().build()
             val filters = listOf(filter)
@@ -93,8 +96,10 @@ class ConnectionHandler(private val activity: MainActivity, private val context:
             handler.postDelayed({
                 Log.v("BLE", "SCAN STOPPED")
                 bleScanner?.stopScan(leScanCallback)
+                scanning = false
             }, 2000)
             bleScanner?.startScan(filters, settings, leScanCallback)
+            scanning = true
             Log.v("BLE", "SCAN STARTED")
         }
     }
@@ -122,10 +127,11 @@ class ConnectionHandler(private val activity: MainActivity, private val context:
 
 
     @SuppressLint("MissingPermission")
-    public fun read(dbm: DataManager, bd: BluetoothDevice) {
+    public fun read(scm: SocialManager, dbm: DataManager, bd: BluetoothDevice, navHostController: NavHostController) {
         SerialSocket(context, bd)
             .connect(object : SerialListener {
                 override fun onSerialConnect() {
+                    navHostController.navigate("/home")
 //                    TODO("Not yet implemented")
                 }
 
@@ -140,12 +146,13 @@ class ConnectionHandler(private val activity: MainActivity, private val context:
                     val time = timeD[0].toFloat()*60 + timeD[1].toFloat()
                     dbm.write(date, time)
 
+//                    prd?.predict(dbm?.read("2024-09-04")?.toFloatArray()!!)
 
-                    dbm!!.read("2024-09-04")?.forEach { ele ->
-                        run {
-                            Log.i("FF", ele.toString())
-                        }
-                    }
+//                    dbm!!.read("2024-09-04")?.forEach { ele ->
+//                        run {
+//                            Log.i("FF", ele.toString())
+//                        }
+//                    }
                 }
 
                 override fun onSerialRead(datas: ArrayDeque<ByteArray>?) {

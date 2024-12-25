@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
@@ -67,7 +68,7 @@ class ConnectionHandler(private val activity: MainActivity, private val context:
     @RequiresApi(Build.VERSION_CODES.S)
     public fun scanDevices(scanned: MutableList<BluetoothDevice>) {
         if (!scanning && requestPermission()) {
-
+            scanning = true
             val filter = ScanFilter.Builder().build()
             val filters = listOf(filter)
 
@@ -97,37 +98,22 @@ class ConnectionHandler(private val activity: MainActivity, private val context:
                 Log.v("BLE", "SCAN STOPPED")
                 bleScanner?.stopScan(leScanCallback)
                 scanning = false
-            }, 2000)
+            }, 30_000)
             bleScanner?.startScan(filters, settings, leScanCallback)
-            scanning = true
             Log.v("BLE", "SCAN STARTED")
         }
     }
 
     @SuppressLint("MissingPermission")
     @RequiresApi(Build.VERSION_CODES.S)
-    public fun findDevice(id: String, callback: ScanCallback) {
-        if (requestPermission()) {
-            val filter = ScanFilter.Builder().setDeviceAddress(id).build()
-            val filters = listOf(filter)
-
-            val settings = ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-                .setReportDelay(0)
-                .build()
-
-            handler.postDelayed({
-                Log.v("BLE", "SCAN STOPPED")
-                bleScanner?.stopScan(callback)
-            }, 2000)
-            bleScanner?.startScan(filters, settings, callback);
-            Log.v("BLE", "SCAN STARTED")
-        }
+    public fun findDevice(address: String): BluetoothDevice? {
+        return if (requestPermission()) {
+            bleAdapter?.getRemoteDevice(address)
+        }else null
     }
 
-
     @SuppressLint("MissingPermission")
-    public fun read(scm: SocialManager, dbm: DataManager, bd: BluetoothDevice, navHostController: NavHostController) {
+    public fun read(dbm: DataManager, bd: BluetoothDevice, navHostController: NavHostController) {
         SerialSocket(context, bd)
             .connect(object : SerialListener {
                 override fun onSerialConnect() {

@@ -7,8 +7,22 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import org.ukeeper.ukeeper.db.DataManager
 
-class SocialManager(private val activity: MainActivity, private val context:Context) {
-    private val smsManager:SmsManager = context.getSystemService(SmsManager::class.java) as SmsManager;
+class SocialManager(private val activity: MainActivity, private val smsManager: SmsManager) {
+    companion object {
+        private lateinit var instance: SocialManager
+
+        fun isInitialized() = ::instance.isInitialized
+
+        fun get(): SocialManager {
+            return instance;
+        }
+    }
+
+    init {
+        if (!isInitialized()) {
+            instance = this
+        }
+    }
 
     public fun broadcastWarningMessage(db: DataManager, message: String) {
         for (a in db.getContacts()) {
@@ -18,11 +32,11 @@ class SocialManager(private val activity: MainActivity, private val context:Cont
                 message,
                 null,
                 null
-            )
+            ).run {  }
         }
     }
 
-    public fun requestPermission() {
+    public fun requestPermission(context: Context) {
         if(ContextCompat.checkSelfPermission(context, android.Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(activity, arrayOf(android.Manifest.permission.SEND_SMS), 1)
         }

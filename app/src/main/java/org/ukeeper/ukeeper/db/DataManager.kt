@@ -4,6 +4,21 @@ import android.content.ContentValues
 import android.content.Context
 
 class DataManager(context: Context) {
+    companion object {
+        private lateinit var instance: DataManager
+
+        fun isInitialized() = ::instance.isInitialized
+
+        fun get(): DataManager {
+            return instance;
+        }
+    }
+
+    init {
+        if (!isInitialized()) {
+            instance = this
+        }
+    }
 
     private val dbHelper = DBHelper(context)
 

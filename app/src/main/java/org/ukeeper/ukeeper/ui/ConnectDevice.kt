@@ -2,10 +2,10 @@ package org.ukeeper.ukeeper.ui
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
@@ -19,16 +19,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -42,17 +43,19 @@ import org.ukeeper.ukeeper.ColBox
 import org.ukeeper.ukeeper.ConnectionHandler
 import org.ukeeper.ukeeper.MainActivity
 import org.ukeeper.ukeeper.R
-import org.ukeeper.ukeeper.SocialManager
 import org.ukeeper.ukeeper.animatedBorder
-import org.ukeeper.ukeeper.db.DataManager
 import java.net.URLEncoder
 
+
 @RequiresApi(Build.VERSION_CODES.S)
+@SuppressLint("MissingPermission")
 @Composable
 public fun DeviceList(activity: MainActivity, context: Context, navController: NavHostController) {
     val con:ConnectionHandler = ConnectionHandler(activity, context)
     val scanned = remember { mutableStateListOf<BluetoothDevice>() };
-    con.scanDevices(scanned)
+    LaunchedEffect(Unit) {
+        con.scanDevices(scanned)
+    }
 
     Row (
         Modifier
@@ -64,7 +67,7 @@ public fun DeviceList(activity: MainActivity, context: Context, navController: N
         Row {
            Text("⟳ 새로고침", style = TextStyle(color = Color(0xFF8B8B8B)), modifier = Modifier.clickable {
                run {
-
+                   con.scanDevices(scanned)
                }
            })
         }
@@ -77,12 +80,13 @@ public fun DeviceList(activity: MainActivity, context: Context, navController: N
         for (device:BluetoothDevice in scanned) {
             Spacer(Modifier.padding(15.dp))
             ColBox(
-                background = Color(0xFF1F1F1F),
+                background = Color(0xFFFEFEFE),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .shadow(3.dp, shape = RoundedCornerShape(16.dp))
                     .clickable {
                         run {
-                            navController.navigate("device/set?id=${URLEncoder.encode(device.address)}")
+                            navController.navigate("device/set?address=${URLEncoder.encode(device.address)}")
                         }
                     }
             ) {
@@ -92,13 +96,16 @@ public fun DeviceList(activity: MainActivity, context: Context, navController: N
                     modifier = Modifier
                         .padding(horizontal = 10.dp)
                 ) {
-                    Icon(Icons.Filled.Favorite, contentDescription = null,
+                    Icon(
+                        painterResource(if (device.name.startsWith("U-Keeper_D")) R.drawable.udoor else R.drawable.chat), contentDescription = null,
                         Modifier
                             .width(45.dp)
                             .height(35.dp)
-                            .padding(end = 10.dp), tint = Color.White)
+                            .padding(end = 10.dp),
+                        tint = Color.Unspecified
+                    )
                     Text(deviceToName(device), fontSize = TextUnit(9F, TextUnitType.Em), fontWeight = FontWeight.W500)
-                    Text("(v1)", modifier = Modifier.padding(start=5.dp), color = Color(0xFF9E9E9E))
+                    Text("(v1)", modifier = Modifier.padding(start=5.dp))
                 }
                 Spacer(
                     Modifier.padding(vertical = 20.dp)
@@ -109,7 +116,7 @@ public fun DeviceList(activity: MainActivity, context: Context, navController: N
                         .fillMaxWidth()
                         .padding(horizontal = 10.dp)
                 ) {
-                    Text("Click to initialize", color = Color(0xFF29E5FF))
+                    Text("터치하여 기기 추가 >", color = Color(0xFF29E5FF))
                 }
             }
         }
@@ -125,36 +132,29 @@ fun deviceToName(device: BluetoothDevice): String {
 
 @RequiresApi(Build.VERSION_CODES.S)
 @Composable
-fun SetDevice(scm: SocialManager, dbm:DataManager, activity: MainActivity, context: Context, navController: NavHostController) {
-    val con:ConnectionHandler = ConnectionHandler(activity, context)
-    navController.currentBackStackEntry?.arguments?.keySet()?.forEachIndexed { index, s -> run {
-        Log.v(
-            "BLE",
-            s + " = " + navController.currentBackStackEntry?.arguments?.get(s)!!
-        )
+fun SetDevice(activity: MainActivity, context: Context, navController: NavHostController) {
+    LaunchedEffect(Unit) {
+        val con:ConnectionHandler = ConnectionHandler(activity, context)
+        navController.currentBackStackEntry?.arguments?.keySet()?.forEachIndexed { index, s -> run {
+            Log.v(
+                "BLE",
+                s + " = " + navController.currentBackStackEntry?.arguments?.get(s)!!
+            )
 
-    } }
-    println()
-    val l = navController.currentBackStackEntry?.arguments?.getString("id")!!
-    val leScanCallback = object : ScanCallback() {
-        @SuppressLint("MissingPermission")
-        override fun onScanResult(callbackType: Int, result: ScanResult?) {
-            Log.v("BLE", "CALLBACK")
-            Log.v("BLE", callbackType.toString())
-            Log.v("BLE", result?.device?.name.toString())
+        } }
 
-            con.read(scm, dbm, result?.device!!, navController)
-            super.onScanResult(callbackType, result)
-        }
+        val l = navController.currentBackStackEntry?.arguments?.getString("address")!!
 
-        override fun onScanFailed(errorCode: Int) {
-            Log.v("BLE", "ERR")
-            Log.v("BLE", errorCode.toString())
-            super.onScanFailed(errorCode)
+        val device = con.findDevice(l)
+
+        if(device!=null) {
+            MainActivity.get().startKeeperService(device) { _ ->
+                Handler(Looper.getMainLooper()).post {
+                    navController.navigate("home")
+                }
+            }
         }
     }
-
-    con.findDevice(l, leScanCallback)
 
     ColBox(
         background = Color(0xFF1F1F1F),
